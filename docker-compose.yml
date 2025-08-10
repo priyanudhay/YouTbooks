@@ -1,0 +1,142 @@
+version: '3.8'
+
+services:
+  # PHP-FPM Application
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: youtbooks_app
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+      - ./docker/php/local.ini:/usr/local/etc/php/conf.d/local.ini
+    networks:
+      - youtbooks_network
+    depends_on:
+      - mysql
+      - redis
+
+  # Nginx Web Server
+  nginx:
+    image: nginx:alpine
+    container_name: youtbooks_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./:/var/www
+      - ./docker/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./docker/nginx/sites/:/etc/nginx/sites-available
+      - ./docker/nginx/ssl/:/etc/ssl/certs
+    networks:
+      - youtbooks_network
+    depends_on:
+      - app
+
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: youtbooks_mysql
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: youtbooks_studio
+      MYSQL_ROOT_PASSWORD: root_password_123
+      MYSQL_USER: youtbooks_user
+      MYSQL_PASSWORD: youtbooks_pass_123
+      SERVICE_TAGS: dev
+      SERVICE_NAME: mysql
+    volumes:
+      - youtbooks_mysql_data:/var/lib/mysql
+      - ./docker/mysql/my.cnf:/etc/mysql/my.cnf
+    networks:
+      - youtbooks_network
+
+  # Redis Cache
+  redis:
+    image: redis:alpine
+    container_name: youtbooks_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - youtbooks_redis_data:/data
+    networks:
+      - youtbooks_network
+
+  # Node.js for asset compilation
+  node:
+    image: node:18-alpine
+    container_name: youtbooks_node
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    command: sh -c "npm install && npm run dev"
+    networks:
+      - youtbooks_network
+
+  # Queue Worker
+  queue:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: youtbooks_queue
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    command: php artisan queue:work --sleep=3 --tries=3 --max-time=3600
+    networks:
+      - youtbooks_network
+    depends_on:
+      - mysql
+      - redis
+
+  # Scheduler (Cron)
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: youtbooks_scheduler
+    restart: unless-stopped
+    working_dir: /var/www
+    volumes:
+      - ./:/var/www
+    command: >
+      sh -c "while true; do
+        php artisan schedule:run --verbose --no-interaction &
+        sleep 60
+      done"
+    networks:
+      - youtbooks_network
+    depends_on:
+      - mysql
+      - redis
+
+  # MailHog for email testing
+  mailhog:
+    image: mailhog/mailhog
+    container_name: youtbooks_mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - youtbooks_network
+
+# Docker Networks
+networks:
+  youtbooks_network:
+    driver: bridge
+
+# Persistent Volumes
+volumes:
+  youtbooks_mysql_data:
+    driver: local
+  youtbooks_redis_data:
+    driver: local

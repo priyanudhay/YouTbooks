@@ -1,0 +1,28 @@
+{
+    "name": "youtbooks-studio",
+    "version": "1.0.0",
+    "description": "YouTbooks Studio - Book Editing & Design Agency Frontend",
+    "private": true,
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview"
+    },
+    "devDependencies": {
+        "@tailwindcss/forms": "^0.5.3",
+        "@tailwindcss/typography": "^0.5.9",
+        "autoprefixer": "^10.4.14",
+        "axios": "^1.1.2",
+        "laravel-vite-plugin": "^0.7.2",
+        "postcss": "^8.4.24",
+        "tailwindcss": "^3.2.0",
+        "vite": "^4.0.0",
+        "alpinejs": "^3.12.0",
+        "eslint": "^8.40.0",
+        "prettier": "^2.8.8"
+    },
+    "dependencies": {
+        "@stripe/stripe-js": "^1.54.0",
+        "@paypal/paypal-js": "^6.0.0"
+    }
+}
